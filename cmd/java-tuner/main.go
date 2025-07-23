@@ -5,12 +5,14 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/tgagor/java-tuner/pkg/tuner"
+
 	"github.com/mattn/go-colorable"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/tgagor/java-tuner/config"
+	"github.com/tgagor/java-tuner/pkg/config"
 )
 
 var BuildVersion string // Will be set dynamically at build time.
@@ -43,6 +45,21 @@ When 'docker build' is just not enough. :-)`,
 		// Main logic goes here
 		if flags.Verbose {
 			log.Debug().Msg("Verbose mode enabled.")
+		}
+
+		// Use tuner package to detect resources and print JVM options
+		cpuCount, memBytes, memPercentage, err := tuner.DetectResources()
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to detect resources")
+			os.Exit(1)
+		}
+
+		opts := tuner.Tune(cpuCount, memBytes, memPercentage, nil)
+		jvmArgs := tuner.FormatOptions(opts)
+
+		fmt.Println("Recommended JVM options:")
+		for _, arg := range jvmArgs {
+			fmt.Println(arg)
 		}
 	},
 }
