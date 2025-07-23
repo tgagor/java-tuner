@@ -1,0 +1,116 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"runtime"
+
+	"github.com/mattn/go-colorable"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+
+	"github.com/tgagor/java-tuner/config"
+)
+
+var BuildVersion string // Will be set dynamically at build time.
+var appName string = "java-tuner"
+var flags config.Flags
+
+var cmd = &cobra.Command{
+	Use:   appName,
+	Short: "A simple to use Java tunning wrapper, that simplifies Java for running in containers.",
+	Long: `A CLI tool for building Docker images with configurable Dockerfile templates and multi-threaded execution.
+
+When 'docker build' is just not enough. :-)`,
+	PreRunE: func(cmd *cobra.Command, args []string) error {
+		// Skip config file requirement if --version is provided
+		if flags.PrintVersion {
+			return nil
+		}
+		return nil
+	},
+	Run: func(cmd *cobra.Command, args []string) {
+		initLogger(flags.Verbose)
+
+		// If version flag is provided, show the version and exit.
+		if flags.PrintVersion {
+			// v0.6.3 (go1.23.4 on darwin/arm64; gc)
+			fmt.Printf("%s (%s on %s/%s; %s)\n", BuildVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, runtime.Compiler)
+			return
+		}
+
+		// Main logic goes here
+		if flags.Verbose {
+			log.Debug().Msg("Verbose mode enabled.")
+		}
+	},
+}
+
+func init() {
+	if BuildVersion == "" {
+		BuildVersion = "development" // Fallback if not set during build
+	}
+
+	cmd.Flags().BoolVarP(&flags.DryRun, "dry-run", "d", false, "Print actions but don't execute them")
+	cmd.Flags().BoolVar(&flags.NoColor, "no-color", false, "Disable color output")
+	cmd.Flags().BoolVarP(&flags.Verbose, "verbose", "v", false, "Increase verbosity of output")
+	cmd.Flags().BoolVarP(&flags.PrintVersion, "version", "V", false, "Display the application version and exit")
+}
+
+func main() {
+	if err := cmd.Execute(); err != nil {
+		log.Error().Err(err).Msg("Failed to execute command")
+		os.Exit(1)
+	}
+}
+
+func initLogger(verbose bool) {
+	// Console writer
+	consoleWriter := zerolog.ConsoleWriter{
+		Out:     colorable.NewColorableStdout(),
+		NoColor: flags.NoColor,
+	}
+	// Disable timestamps
+	zerolog.TimeFieldFormat = ""
+	consoleWriter.FormatTimestamp = func(i interface{}) string {
+		return ""
+	}
+
+	// Custom format for level
+	// consoleWriter.FormatLevel = func(i interface{}) string {
+	//     if ll, ok := i.(string); ok {
+	//         switch ll {
+	//         case "debug":
+	//             return "\033[01;36mDEBUG\033[0m" // Cyan
+	//         case "info":
+	//             return "\033[32mINFO\033[0m" // Green
+	//         case "warn":
+	//             return "\033[33mWARN\033[0m" // Yellow
+	//         case "error":
+	//             return "\033[31mERROR\033[0m" // Red
+	//         case "fatal":
+	//             return "\033[35mFATAL\033[0m" // Magenta
+	//         case "panic":
+	//             return "\033[31mPANIC\033[0m" // Red
+	//         default:
+	//             return ll
+	//         }
+	//     }
+	//     return ""
+	// }
+
+	// Base logger
+	baseLogger := zerolog.New(consoleWriter).With().Logger()
+
+	// Add caller only for debug level using a hook
+	if verbose {
+		log.Logger = baseLogger.Hook(zerolog.HookFunc(func(e *zerolog.Event, level zerolog.Level, msg string) {
+			if level == zerolog.DebugLevel {
+				e.Caller()
+			}
+		})).Level(zerolog.DebugLevel)
+	} else {
+		log.Logger = baseLogger.Level(zerolog.InfoLevel)
+	}
+}

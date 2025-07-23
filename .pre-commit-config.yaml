@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks.git
+    rev: v5.0.0
+    hooks:
+      - id: check-json
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=auto]
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.2.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [--strict, --force-scope, feat, fix, chore, test, custom]
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+      - id: go-imports
+      - id: go-cyclo
+        args: [-over=20]
+      - id: golangci-lint
+      - id: go-critic
+      - id: go-mod-tidy
+  - repo: local
+    hooks:
+      - id: go-vet
+        name: 'go vet'
+        entry: run-go-vet.sh
+        files: '\.go$'
+        language: 'script'
+        description: "Runs `go vet`, requires golang"
