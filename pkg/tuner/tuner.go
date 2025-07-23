@@ -25,7 +25,7 @@ func DetectResources() (cpuCount int, memLimit uint64, memPercentage float64, er
 			return
 		}
 	} else {
-		cpuCount = 2 // Default fallback
+		cpuCount = CPULimit()
 	}
 
 	memLimit = MemoryLimit()
