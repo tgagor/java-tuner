@@ -41,7 +41,7 @@ docker-build:
 	docker build -t java-tuner:$(VERSION) .
 
 docker-run: docker-build
-	docker run -ti --rm --cpu-quota 1000 java-tuner:$(VERSION) --verbose --dry-run
+	docker run -ti --rm --cpu-quota 1000 java-tuner:$(VERSION) --dry-run
 	docker run -ti --rm --cpu-quota 1000000 java-tuner:$(VERSION) --verbose
 	docker run -ti --rm -e JAVA_TUNER_CPU=2 java-tuner:$(VERSION) --verbose
 	docker run -ti --rm -m 128m java-tuner:$(VERSION) --verbose --dry-run

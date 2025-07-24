@@ -20,7 +20,7 @@ func CPULimit() int {
 	log.Debug().Str("periodPath", periodPath).Int("period", period).Msg("Read CPU period")
 
 	if err1 != nil || err2 != nil {
-		log.Warn().Err(err1).Err(err2).Msg("Failed to read CPU limits from cgroup v1")
+		log.Debug().Err(err1).Err(err2).Msg("Failed to read CPU limits from cgroup v1")
 
 		// Try cgroup v2: /sys/fs/cgroup/cpu.max
 		if data, err := os.ReadFile("/sys/fs/cgroup/cpu.max"); err == nil {

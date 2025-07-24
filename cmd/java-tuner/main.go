@@ -96,7 +96,7 @@ Environment Variables:
 				os.Exit(1)
 			}
 		} else {
-			log.Debug().Str("cmd", java.String()).Msg("Would run")
+			log.Debug().Str("cmd", "java "+java.String()).Msg("Would run")
 			log.Info().Msg("Dry run enabled, not executing command.")
 		}
 	},
