@@ -137,6 +137,7 @@ jobs:
           make install-linters
 
       - name: Update cache of linting tools
+        if: steps.cached-tools.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
