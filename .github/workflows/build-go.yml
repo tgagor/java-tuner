@@ -121,6 +121,7 @@ jobs:
           echo "GOVERSION=$(go version | awk '{print $3}')" >> "$GITHUB_OUTPUT"
 
       - name: Restore cached linting tools
+        id: cached-tools
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -131,6 +132,7 @@ jobs:
           key: golint-v1-${{ github.job }}-${{ runner.os }}-${{ steps.vars.outputs.GOVERSION }}-${{ hashFiles('Makefile') }}
 
       - name: Install dependencies
+        if: steps.cached-tools.outputs.cache-hit != 'true'
         run: |
           make install-linters
 
