@@ -58,7 +58,8 @@ When 'docker build' is just not enough. :-)`,
 		jvmArgs := tuner.FormatOptions(opts)
 
 		log.Info().Strs("jvmArgs", jvmArgs).Msg("Will start Java with options:")
-		java := runner.New().Arg(jvmArgs...).SetVerbose(flags.Verbose)
+		java := runner.New()
+		java.Arg(jvmArgs...).SetVerbose(flags.Verbose)
 
 		// Find arguments after -- and append them to jvmArgs
 		extraArgs := []string{}
