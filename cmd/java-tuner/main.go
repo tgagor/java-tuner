@@ -124,22 +124,47 @@ func init() {
 	viper.AutomaticEnv()
 
 	cmd.Flags().BoolVarP(&flags.DryRun, "dry-run", "d", false, "Print actions but don't execute them")
-	viper.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run"))
+	if err := viper.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind dry-run flag")
+		os.Exit(1)
+	}
 	cmd.Flags().BoolVar(&flags.NoColor, "no-color", false, "Disable color output")
-	viper.BindPFlag("no-color", cmd.Flags().Lookup("no-color"))
+	if err := viper.BindPFlag("no-color", cmd.Flags().Lookup("no-color")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind no-color flag")
+		os.Exit(1)
+	}
 	cmd.Flags().BoolVarP(&flags.Verbose, "verbose", "v", false, "Increase verbosity of output")
-	viper.BindPFlag("verbose", cmd.Flags().Lookup("verbose"))
+	if err := viper.BindPFlag("verbose", cmd.Flags().Lookup("verbose")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind verbose flag")
+		os.Exit(1)
+	}
 	cmd.Flags().BoolVarP(&flags.PrintVersion, "version", "V", false, "Display the application version and exit")
 	cmd.Flags().StringVarP(&flags.LogFormat, "log-format", "l", "plain", "Log format to use (plain, json or console)")
-	viper.BindPFlag("log-format", cmd.Flags().Lookup("log-format"))
+	if err := viper.BindPFlag("log-format", cmd.Flags().Lookup("log-format")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind log-format flag")
+		os.Exit(1)
+	}
 	cmd.Flags().Int("cpu-count", 0, "Override detected CPU count")
-	viper.BindPFlag("cpu-count", cmd.Flags().Lookup("cpu-count"))
+	if err := viper.BindPFlag("cpu-count", cmd.Flags().Lookup("cpu-count")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind cpu-count flag")
+		os.Exit(1)
+	}
 	cmd.Flags().Float64("mem-percentage", 80.0, "Override detected memory percentage")
-	viper.BindPFlag("mem-percentage", cmd.Flags().Lookup("mem-percentage"))
+	if err := viper.BindPFlag("mem-percentage", cmd.Flags().Lookup("mem-percentage")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind mem-percentage flag")
+		os.Exit(1)
+	}
 	cmd.Flags().StringSliceVar(&flags.JvmOpts, "opts", []string{}, "Additional JVM flags to pass")
-	viper.BindPFlag("opts", cmd.Flags().Lookup("opts"))
+	if err := viper.BindPFlag("opts", cmd.Flags().Lookup("opts")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind opts flag")
+		os.Exit(1)
+	}
 	cmd.Flags().StringVar(&flags.JavaBin, "java-bin", "auto-detect", "Path to the Java binary to use (default: auto-detect)")
-	viper.BindPFlag("java-bin", cmd.Flags().Lookup("java-bin"))
+	if err := viper.BindPFlag("java-bin", cmd.Flags().Lookup("java-bin")); err != nil {
+		log.Error().Err(err).Msg("Failed to bind java-bin flag")
+		os.Exit(1)
+	}
+
 }
 
 func main() {
