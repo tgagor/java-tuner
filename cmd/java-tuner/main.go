@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/mattn/go-colorable"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/tgagor/java-tuner/pkg/config"
 	"github.com/tgagor/java-tuner/pkg/runner"
@@ -19,12 +21,25 @@ var BuildVersion string // Will be set dynamically at build time.
 var appName string = "java-tuner"
 var flags config.Flags
 
+const JAVA_TUNER_DEFAULT_PREFIX = "JAVA_TUNER_"
+
 var cmd = &cobra.Command{
 	Use:   appName,
-	Short: "A simple to use Java tunning wrapper, that simplifies Java for running in containers.",
-	Long: `A CLI tool for building Docker images with configurable Dockerfile templates and multi-threaded execution.
+	Short: "A simple to use Java tuning wrapper, that simplifies running Java apps in containers.",
+	Long: `A CLI tool for tuning JVM options and running Java applications in containers.
 
-When 'docker build' is just not enough. :-)`,
+Automatically detects system resources and generates optimal JVM flags for containerized environments.
+
+Environment Variables:
+  JAVA_TUNER_PREFIX         Change env var prefix (default: JAVA_TUNER_)
+  JAVA_TUNER_CPU_COUNT      Override detected CPU count (same as --cpu-count)
+  JAVA_TUNER_MEM_PERCENTAGE Override detected memory percentage (same as --mem-percentage)
+  JAVA_TUNER_OPTS           Additional JVM flags (same as --opts)
+  JAVA_TUNER_NO_COLOR       Disable color output (same as --no-color)
+  JAVA_TUNER_VERBOSE        Increase verbosity (same as --verbose)
+  JAVA_TUNER_LOG_FORMAT     Log format to use (plain, json, console)
+  JAVA_TUNER_JAVA_BIN       Path to the Java binary to use (same as --java-bin)
+`,
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip config file requirement if --version is provided
 		if flags.PrintVersion {
@@ -33,7 +48,18 @@ When 'docker build' is just not enough. :-)`,
 		return nil
 	},
 	Run: func(cmd *cobra.Command, args []string) {
-		initLogger(flags.Verbose)
+		switch flags.LogFormat {
+		case "plain":
+			initLogger(flags.Verbose)
+		case "json":
+			zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			log.Logger = log.Output(zerolog.ConsoleWriter{Out: colorable.NewColorableStdout(), NoColor: flags.NoColor})
+			if flags.Verbose {
+				log.Logger = log.With().Caller().Logger()
+			} else {
+				log.Logger = log.With().Logger()
+			}
+		}
 
 		// If version flag is provided, show the version and exit.
 		if flags.PrintVersion {
@@ -48,7 +74,7 @@ When 'docker build' is just not enough. :-)`,
 		}
 
 		// Use tuner package to detect resources and print JVM options
-		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources()
+		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources(flags)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to detect resources")
 			os.Exit(1)
@@ -93,10 +119,28 @@ func init() {
 		BuildVersion = "development" // Fallback if not set during build
 	}
 
+	viper.SetEnvPrefix(getPrefix(JAVA_TUNER_DEFAULT_PREFIX))
+	replacer := strings.NewReplacer("-", "_")
+	viper.SetEnvKeyReplacer(replacer)
+	viper.AutomaticEnv()
+
 	cmd.Flags().BoolVarP(&flags.DryRun, "dry-run", "d", false, "Print actions but don't execute them")
+	viper.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run"))
 	cmd.Flags().BoolVar(&flags.NoColor, "no-color", false, "Disable color output")
+	viper.BindPFlag("no-color", cmd.Flags().Lookup("no-color"))
 	cmd.Flags().BoolVarP(&flags.Verbose, "verbose", "v", false, "Increase verbosity of output")
+	viper.BindPFlag("verbose", cmd.Flags().Lookup("verbose"))
 	cmd.Flags().BoolVarP(&flags.PrintVersion, "version", "V", false, "Display the application version and exit")
+	cmd.Flags().StringVarP(&flags.LogFormat, "log-format", "l", "plain", "Log format to use (plain, json or console)")
+	viper.BindPFlag("log-format", cmd.Flags().Lookup("log-format"))
+	cmd.Flags().Int("cpu-count", 0, "Override detected CPU count")
+	viper.BindPFlag("cpu-count", cmd.Flags().Lookup("cpu-count"))
+	cmd.Flags().Float64("mem-percentage", 80.0, "Override detected memory percentage")
+	viper.BindPFlag("mem-percentage", cmd.Flags().Lookup("mem-percentage"))
+	cmd.Flags().StringSliceVar(&flags.JvmOpts, "opts", []string{}, "Additional JVM flags to pass")
+	viper.BindPFlag("opts", cmd.Flags().Lookup("opts"))
+	cmd.Flags().StringVar(&flags.JavaBin, "java-bin", "auto-detect", "Path to the Java binary to use (default: auto-detect)")
+	viper.BindPFlag("java-bin", cmd.Flags().Lookup("java-bin"))
 }
 
 func main() {
@@ -131,4 +175,15 @@ func initLogger(verbose bool) {
 	} else {
 		log.Logger = baseLogger.Level(zerolog.InfoLevel)
 	}
+}
+
+func getPrefix(fallback string) string {
+	prefix := os.Getenv("JAVA_TUNER_PREFIX")
+	if len(prefix) == 0 {
+		prefix = fallback
+	}
+	if prefix != "" && !strings.HasSuffix(prefix, "_") {
+		prefix += "_"
+	}
+	return prefix
 }
