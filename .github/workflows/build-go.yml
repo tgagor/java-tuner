@@ -173,13 +173,13 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            binary: td-linux-amd64
+            binary: java-tuner-linux-amd64
 
           - os: macos-latest
-            binary: td-macos-amd64
+            binary: java-tuner-macos-amd64
 
           - os: windows-latest
-            binary: td-windows-amd64.exe
+            binary: java-tuner-windows-amd64.exe
     steps:
       - uses: actions/checkout@v4
         with:
@@ -198,26 +198,14 @@ jobs:
         run: |
           chmod +x ${{ matrix.binary }}
           ./${{ matrix.binary }} -V
-          ./${{ matrix.binary }} --config tests/test-1.yaml --tag ${VERSION} --delete
-          ./${{ matrix.binary }} --config tests/test-2.yaml --tag ${VERSION} --delete
-          ./${{ matrix.binary }} --config tests/test-4.yaml --tag ${VERSION} --delete
-          ./${{ matrix.binary }} --config tests/test-5.yaml --tag ${VERSION} --delete
-          ./${{ matrix.binary }} --config tests/test-7.yaml --tag ${VERSION} --delete
-          ./${{ matrix.binary }} --config tests/test-9.yaml --tag ${VERSION} --delete
-          ./${{ matrix.binary }} --config tests/test-10.yaml --tag ${VERSION} --delete
+          ./${{ matrix.binary }} --dry-run --verbose
 
       - name: Run test on Windows
         if: matrix.os == 'windows-latest'
         shell: cmd
         run: |
           .\\${{ matrix.binary }} -V
-          .\\${{ matrix.binary }} --config tests/test-1.yaml --tag ${VERSION} --delete
-          .\\${{ matrix.binary }} --config tests/test-2.yaml --tag ${VERSION} --delete
-          .\\${{ matrix.binary }} --config tests/test-4.yaml --tag ${VERSION} --delete
-          .\\${{ matrix.binary }} --config tests/test-5.yaml --tag ${VERSION} --delete
-          .\\${{ matrix.binary }} --config tests/test-7.yaml --tag ${VERSION} --delete
-          .\\${{ matrix.binary }} --config tests/test-9.yaml --tag ${VERSION} --delete
-          .\\${{ matrix.binary }} --config tests/test-10.yaml --tag ${VERSION} --delete
+          .\\${{ matrix.binary }} --dry-run --verbose
 
   release:
     permissions: write-all
