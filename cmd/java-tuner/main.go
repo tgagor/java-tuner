@@ -60,7 +60,7 @@ When 'docker build' is just not enough. :-)`,
 		log.Info().Strs("jvmArgs", jvmArgs).Msg("Will start Java with options:")
 
 		if !flags.DryRun {
-			output, err := runner.New("java").Arg(jvmArgs...).SetVerbose(flags.Verbose).Run()
+			output, err := runner.New("/usr/local/bin/java").Arg(jvmArgs...).SetVerbose(flags.Verbose).Run()
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to run Java command")
 				os.Exit(1)
