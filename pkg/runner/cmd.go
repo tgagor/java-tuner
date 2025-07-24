@@ -25,16 +25,25 @@ func New() *Cmd {
 	}
 }
 
-func (c *Cmd) FindJava() *Cmd {
-	path, err := exec.LookPath("java")
-	if err != nil {
-		log.Error().Err(err).Msg("Java executable not found")
-		os.Exit(1)
-	} else {
-		log.Info().Str("path", path).Msg("Java executable found")
-	}
+func (c *Cmd) FindJava(defaultPath string) *Cmd {
+	if defaultPath == "" || defaultPath == "auto-detect" {
+		path, err := exec.LookPath("java")
+		if err != nil {
+			log.Error().Err(err).Msg("Java executable not found")
+			os.Exit(1)
+		} else {
+			log.Info().Str("path", path).Msg("Java executable found")
+		}
 
-	c.cmd = path
+		c.cmd = path
+	} else {
+		if _, err := os.Stat(defaultPath); os.IsNotExist(err) {
+			log.Error().Str("path", defaultPath).Msg("Java executable not found at specified path")
+			os.Exit(1)
+		}
+		c.cmd = defaultPath
+		log.Info().Str("path", c.cmd).Msg("Using specified Java executable")
+	}
 	return c
 }
 
@@ -58,7 +67,6 @@ func (c *Cmd) PreInfo(msg string) *Cmd {
 }
 
 func (c *Cmd) Run() (string, error) {
-	c.FindJava()
 	// pipe the commands output to the applications
 	if c.cmd == "" {
 		return "", errors.New("command not set")
