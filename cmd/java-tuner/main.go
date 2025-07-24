@@ -48,19 +48,16 @@ When 'docker build' is just not enough. :-)`,
 		}
 
 		// Use tuner package to detect resources and print JVM options
-		cpuCount, memBytes, memPercentage, err := tuner.DetectResources()
+		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources()
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to detect resources")
 			os.Exit(1)
 		}
 
-		opts := tuner.Tune(cpuCount, memBytes, memPercentage, nil)
+		opts := tuner.Tune(cpuCount, memBytes, memPercentage, otherFlags)
 		jvmArgs := tuner.FormatOptions(opts)
 
-		fmt.Println("Recommended JVM options:")
-		for _, arg := range jvmArgs {
-			fmt.Println(arg)
-		}
+		log.Info().Strs("jvmArgs", jvmArgs).Msg("Will start Java with options:")
 	},
 }
 
@@ -93,29 +90,6 @@ func initLogger(verbose bool) {
 	consoleWriter.FormatTimestamp = func(i interface{}) string {
 		return ""
 	}
-
-	// Custom format for level
-	// consoleWriter.FormatLevel = func(i interface{}) string {
-	//     if ll, ok := i.(string); ok {
-	//         switch ll {
-	//         case "debug":
-	//             return "\033[01;36mDEBUG\033[0m" // Cyan
-	//         case "info":
-	//             return "\033[32mINFO\033[0m" // Green
-	//         case "warn":
-	//             return "\033[33mWARN\033[0m" // Yellow
-	//         case "error":
-	//             return "\033[31mERROR\033[0m" // Red
-	//         case "fatal":
-	//             return "\033[35mFATAL\033[0m" // Magenta
-	//         case "panic":
-	//             return "\033[31mPANIC\033[0m" // Red
-	//         default:
-	//             return ll
-	//         }
-	//     }
-	//     return ""
-	// }
 
 	// Base logger
 	baseLogger := zerolog.New(consoleWriter).With().Logger()

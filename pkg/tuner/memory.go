@@ -4,29 +4,35 @@ import (
 	"os"
 	"runtime"
 	"strconv"
+	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 // MemoryLimit checks container memory limit from cgroup files or system RAM.
 func MemoryLimit() uint64 {
-	// Try /sys/fs/cgroup/memory/memory.limit_in_bytes
+	// Try /sys/fs/cgroup/memory/memory.limit_in_bytes (cgroup v1)
 	if data, err := os.ReadFile("/sys/fs/cgroup/memory/memory.limit_in_bytes"); err == nil {
-		if val, err := strconv.ParseUint(string(bytesTrim(data)), 10, 64); err == nil {
+		if val, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64); err == nil {
+			log.Debug().Str("memory.limit_in_bytes", string(data)).Msg("Read memory limit")
 			return val
 		}
 	}
 	// Try /sys/fs/cgroup/memory.max (cgroup v2)
 	if data, err := os.ReadFile("/sys/fs/cgroup/memory.max"); err == nil {
-		s := string(bytesTrim(data))
+		s := strings.TrimSpace(string(data))
+		log.Debug().Str("memory.max", s).Msg("Read memory max")
 		if s == "max" {
 			// No limit, fallback to system RAM
-			return systemRAM()
+			log.Warn().Str("memory.max", s).Msg("No memory limit set, using 25% of system RAM")
+			return systemRAM() / 4 // Assume 1/4 of system RAM
 		}
 		if val, err := strconv.ParseUint(s, 10, 64); err == nil {
 			return val
 		}
 	}
-	// Fallback to system RAM
-	return systemRAM()
+	// Fallback to 25% of system RAM
+	return systemRAM() / 4
 }
 
 // systemRAM returns the total system RAM in bytes.
@@ -55,9 +61,6 @@ func systemRAM() uint64 {
 }
 
 // Helper functions for trimming and splitting bytes
-func bytesTrim(b []byte) []byte {
-	return []byte(string(b))
-}
 func bytesSplit(b []byte, sep byte) [][]byte {
 	var out [][]byte
 	start := 0

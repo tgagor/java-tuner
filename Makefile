@@ -5,16 +5,18 @@ run:
 	go run \
 		-ldflags="-X main.BuildVersion=$(VERSION)" \
 		./cmd/java-tuner \
+		--verbose \
 		--dry-run
 
 bin/java-tuner: build
 
 build:
-	go build \
+	CGO_ENABLED=0 go build \
 		-ldflags="-X main.BuildVersion=$(VERSION)" \
 		-o bin/java-tuner ./cmd/java-tuner
 
-test: bin/java-tuner
+test: bin/java-tuner docker-run
+	@echo "Running tests..."
 	go test -v ./...
 
 $(GOBIN)/goimports:
@@ -34,6 +36,17 @@ install-linters: $(GOBIN)/goimports $(GOBIN)/gocyclo $(GOBIN)/golangci-lint $(GO
 
 lint: install-linters
 	@pre-commit run -a
+
+docker-build:
+	docker build -t java-tuner:$(VERSION) .
+
+docker-run: docker-build
+	docker run -ti --rm --cpu-quota 1000 java-tuner:$(VERSION) --verbose --dry-run
+	docker run -ti --rm --cpu-quota 1000000 java-tuner:$(VERSION) --verbose --dry-run
+	docker run -ti --rm -e JAVA_TUNER_CPU=2 java-tuner:$(VERSION) --verbose --dry-run
+	docker run -ti --rm -m 128m java-tuner:$(VERSION) --verbose --dry-run
+	docker run -ti --rm -m 32m java-tuner:$(VERSION) --verbose --dry-run
+	docker run -ti --rm -m 128m -e JAVA_TUNER_MEM_PERCENTAGE=50 java-tuner:$(VERSION) --verbose --dry-run
 
 clean:
 	@rm -rfv bin
