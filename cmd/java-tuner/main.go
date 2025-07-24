@@ -5,14 +5,14 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/tgagor/java-tuner/pkg/tuner"
-
 	"github.com/mattn/go-colorable"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/tgagor/java-tuner/pkg/config"
+	"github.com/tgagor/java-tuner/pkg/runner"
+	"github.com/tgagor/java-tuner/pkg/tuner"
 )
 
 var BuildVersion string // Will be set dynamically at build time.
@@ -58,6 +58,18 @@ When 'docker build' is just not enough. :-)`,
 		jvmArgs := tuner.FormatOptions(opts)
 
 		log.Info().Strs("jvmArgs", jvmArgs).Msg("Will start Java with options:")
+
+		if !flags.DryRun {
+			output, err := runner.New("java").Arg(jvmArgs...).SetVerbose(flags.Verbose).Run()
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to run Java command")
+				os.Exit(1)
+			}
+			log.Info().Str("output", output).Msg("Java command executed successfully")
+		} else {
+			log.Info().Msg("Dry run enabled, not executing command.")
+			log.Debug().Str("cmd", "java").Strs("args", jvmArgs).Msg("Dry run command")
+		}
 	},
 }
 
