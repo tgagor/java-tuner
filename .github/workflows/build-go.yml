@@ -73,7 +73,7 @@ jobs:
 
         export CGO_ENABLED=0
 
-        OUTPUT_NAME=td-${{ matrix.os }}-${{ matrix.arch }}
+        OUTPUT_NAME=java-tuner-${{ matrix.os }}-${{ matrix.arch }}
         if [ "${{ matrix.os }}" == "windows" ]; then
           OUTPUT_NAME+=".exe"
         fi
@@ -233,7 +233,7 @@ jobs:
       - name: Calculate checksums
         run: |
           cd bin
-          sha512sum td-* > sha512sums.txt
+          sha512sum java-tuner-* > sha512sums.txt
 
       - name: Bump version and push tag
         id: tag_version
