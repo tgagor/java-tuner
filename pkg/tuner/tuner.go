@@ -73,7 +73,7 @@ func Tune(cpuCount int, memLimit uint64, memPercentage float64, otherFlags []str
 	opts.MemoryOpts = append(opts.MemoryOpts, memDefaults...)
 	log.Debug().Strs("memDefaults", memDefaults).Msg("Using default memory options")
 	opts.MemoryOpts = append(opts.MemoryOpts, fmt.Sprintf("-XX:MaxRAMPercentage=%.1f", memPercentage))
-	log.Debug().Float64("memPercentage", memPercentage).Msg("Using memory percentage for MaxRAMPercentage")
+	log.Info().Float64("memPercentage", memPercentage).Msg("Using memory percentage for MaxRAMPercentage")
 
 	if memLimit < 128*1024*1024 { // Less than 128MB
 		log.Warn().Uint64("memLimit", memLimit).Msg("Memory limit is less than 128MB, setting -XX:MaxRAM would not allow to start JVM, skipping it")

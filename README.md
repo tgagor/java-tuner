@@ -69,6 +69,20 @@ You can set environment variables to override detection and behavior:
 JAVA_TUNER_CPU=2 JAVA_TUNER_MEM_PERCENTAGE=75 java-tuner -- -jar myapp.jar --spring.config.location=prod.yaml
 ```
 
+In Dockerfile it would look like:
+
+```Dockerfile
+FROM amazoncorretto:17
+
+ADD https://github.com/tgagor/java-tuner/releases/latest/download/java-tuner-linux-amd64 /usr/local/bin/java-tuner
+RUN chmod +x /usr/local/bin/java-tuner
+ENTRYPOINT ["java-tuner", "--verbose", "--"]
+
+COPY my-app.jar ./
+CMD ["java", "-jar", "my-app.jar"]
+```
+
+
 This will:
 - Detect resources and generate JVM flags
 - Start your Java application (`myapp.jar`) with those flags
