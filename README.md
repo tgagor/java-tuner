@@ -20,13 +20,16 @@ Java's default resource detection often fails in containers, leading to poor per
 - Efficient CPU utilization
 - Faster startup and better runtime stability
 
+
 ## Usage
 
-Run the CLI to print recommended JVM options:
+Run the CLI to start your Java application with tuned JVM options:
 
 ```sh
-java-tuner
+java-tuner [flags] -- [java-class-or-jar] [java-args]
 ```
+
+All arguments after `--` are passed directly to the Java process, allowing you to specify the main class, JAR file, and any application arguments.
 
 You can set environment variables to override detection:
 
@@ -43,25 +46,30 @@ You can set environment variables to override detection:
 
 ## Typical use cases
 
-- **Docker Entrypoint**: Use `java-tuner` to generate JVM flags before starting your Java app.
-- **Kubernetes**: Ensure your Java app respects pod resource limits.
-- **CI/CD**: Validate JVM options for different environments.
+- **Docker Entrypoint**: Use `java-tuner` to launch your Java app with tuned JVM flags automatically.
+- **Kubernetes**: Ensure your Java app respects pod resource limits and receives all signals.
+- **CI/CD**: Run Java apps with optimal JVM options for different environments.
 
 ## Example
 
 ```sh
-JAVA_TUNER_CPU=2 JAVA_TUNER_MEM_PERCENTAGE=75 java-tuner
+JAVA_TUNER_CPU=2 JAVA_TUNER_MEM_PERCENTAGE=75 java-tuner -- -jar myapp.jar --spring.config.location=prod.yaml
 ```
 
-Outputs JVM flags like:
+This will:
+- Detect resources and generate JVM flags
+- Start your Java application (`myapp.jar`) with those flags
+- Pass all arguments after `--` to the Java process
 
-```
--XX:+AlwaysActAsServerClassMachine
--XX:ActiveProcessorCount=2
--XX:MaxRAMPercentage=75.0
--XX:MaxRAM=900m
-...
-```
+## How it works
+
+- Reads cgroup files to detect CPU and memory limits.
+- Applies defaults and user overrides.
+- Runs the Java process directly, replacing itself and passing all signals and arguments.
+
+## License
+
+[GPLv3](./LICENSE)
 
 ## How it works
 
