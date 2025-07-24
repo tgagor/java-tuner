@@ -11,5 +11,6 @@ type Flags struct {
 	MemPercentage float64
 	MemLimit      uint64
 	JvmOpts       []string
+	OptsRaw       string
 	JavaBin       string
 }

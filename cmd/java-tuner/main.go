@@ -20,8 +20,9 @@ import (
 var BuildVersion string // Will be set dynamically at build time.
 var appName string = "java-tuner"
 var flags config.Flags
+var v = viper.New()
 
-const JAVA_TUNER_DEFAULT_PREFIX = "JAVA_TUNER_"
+const JAVA_TUNER_DEFAULT_PREFIX = "JAVA_TUNER"
 
 var cmd = &cobra.Command{
 	Use:   appName,
@@ -31,7 +32,7 @@ var cmd = &cobra.Command{
 Automatically detects system resources and generates optimal JVM flags for containerized environments.
 
 Environment Variables:
-  JAVA_TUNER_PREFIX         Change env var prefix (default: JAVA_TUNER_)
+  JAVA_TUNER_PREFIX         Change env var prefix (default: JAVA_TUNER)
   JAVA_TUNER_CPU_COUNT      Override detected CPU count (same as --cpu-count)
   JAVA_TUNER_MEM_PERCENTAGE Override detected memory percentage (same as --mem-percentage)
   JAVA_TUNER_OPTS           Additional JVM flags (same as --opts)
@@ -40,41 +41,31 @@ Environment Variables:
   JAVA_TUNER_LOG_FORMAT     Log format to use (plain, json, console)
   JAVA_TUNER_JAVA_BIN       Path to the Java binary to use (same as --java-bin)
 `,
-	PreRunE: func(cmd *cobra.Command, args []string) error {
-		// Skip config file requirement if --version is provided
-		if flags.PrintVersion {
-			return nil
-		}
-		return nil
-	},
 	Run: func(cmd *cobra.Command, args []string) {
-		switch flags.LogFormat {
+		switch v.GetString("log-format") {
+		case "console":
+			initLogger(v.GetBool("verbose"), false)
 		case "plain":
-			initLogger(flags.Verbose)
-		case "json":
-			zerolog.SetGlobalLevel(zerolog.InfoLevel)
-			log.Logger = log.Output(zerolog.ConsoleWriter{Out: colorable.NewColorableStdout(), NoColor: flags.NoColor})
-			if flags.Verbose {
-				log.Logger = log.With().Caller().Logger()
-			} else {
-				log.Logger = log.With().Logger()
-			}
+			initLogger(v.GetBool("verbose"), true)
+		default:
 		}
 
+		log.Debug().Any("settings", v.AllSettings()).Msg("Loaded configuration from environment variables")
+
 		// If version flag is provided, show the version and exit.
-		if flags.PrintVersion {
+		if v.GetBool("version") {
 			// v0.6.3 (go1.23.4 on darwin/arm64; gc)
 			fmt.Printf("%s (%s on %s/%s; %s)\n", BuildVersion, runtime.Version(), runtime.GOOS, runtime.GOARCH, runtime.Compiler)
 			return
 		}
 
 		// Main logic goes here
-		if flags.Verbose {
+		if v.GetBool("verbose") {
 			log.Debug().Msg("Verbose mode enabled.")
 		}
 
 		// Use tuner package to detect resources and print JVM options
-		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources(flags)
+		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources(v)
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to detect resources")
 			os.Exit(1)
@@ -82,9 +73,8 @@ Environment Variables:
 
 		opts := tuner.Tune(cpuCount, memBytes, memPercentage, otherFlags)
 		jvmArgs := tuner.FormatOptions(opts)
-
-		log.Info().Strs("jvmArgs", jvmArgs).Msg("Will start Java with options:")
-		java := runner.New().FindJava(flags.JavaBin).Arg(jvmArgs...).SetVerbose(flags.Verbose)
+		jvmArgs = tuner.FilterBlacklisted(jvmArgs)
+		java := runner.New().Arg(jvmArgs...).SetVerbose(flags.Verbose)
 
 		// Find arguments after -- and append them to jvmArgs
 		extraArgs := []string{}
@@ -100,15 +90,14 @@ Environment Variables:
 		}
 
 		if !flags.DryRun {
-			output, err := java.Run()
+			_, err := java.FindJava(v.GetString("java-bin")).Run()
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to run Java command")
 				os.Exit(1)
 			}
-			log.Info().Str("output", output).Msg("Java command executed successfully")
 		} else {
+			log.Debug().Str("cmd", java.String()).Msg("Would run")
 			log.Info().Msg("Dry run enabled, not executing command.")
-			log.Debug().Str("cmd", java.String()).Msg("Dry run command")
 		}
 	},
 }
@@ -118,53 +107,40 @@ func init() {
 		BuildVersion = "development" // Fallback if not set during build
 	}
 
-	viper.SetEnvPrefix(getPrefix(JAVA_TUNER_DEFAULT_PREFIX))
+	v.SetEnvPrefix(getPrefix(JAVA_TUNER_DEFAULT_PREFIX))
 	replacer := strings.NewReplacer("-", "_")
-	viper.SetEnvKeyReplacer(replacer)
-	viper.AutomaticEnv()
+	v.SetEnvKeyReplacer(replacer)
+	v.AutomaticEnv()
 
+	// Use v to provide default values for flags if env vars are set
 	cmd.Flags().BoolVarP(&flags.DryRun, "dry-run", "d", false, "Print actions but don't execute them")
-	if err := viper.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind dry-run flag")
-		os.Exit(1)
-	}
-	cmd.Flags().BoolVar(&flags.NoColor, "no-color", false, "Disable color output")
-	if err := viper.BindPFlag("no-color", cmd.Flags().Lookup("no-color")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind no-color flag")
-		os.Exit(1)
-	}
-	cmd.Flags().BoolVarP(&flags.Verbose, "verbose", "v", false, "Increase verbosity of output")
-	if err := viper.BindPFlag("verbose", cmd.Flags().Lookup("verbose")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind verbose flag")
-		os.Exit(1)
-	}
-	cmd.Flags().BoolVarP(&flags.PrintVersion, "version", "V", false, "Display the application version and exit")
-	cmd.Flags().StringVarP(&flags.LogFormat, "log-format", "l", "plain", "Log format to use (plain, json or console)")
-	if err := viper.BindPFlag("log-format", cmd.Flags().Lookup("log-format")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind log-format flag")
-		os.Exit(1)
-	}
-	cmd.Flags().Int("cpu-count", 0, "Override detected CPU count")
-	if err := viper.BindPFlag("cpu-count", cmd.Flags().Lookup("cpu-count")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind cpu-count flag")
-		os.Exit(1)
-	}
-	cmd.Flags().Float64("mem-percentage", 80.0, "Override detected memory percentage")
-	if err := viper.BindPFlag("mem-percentage", cmd.Flags().Lookup("mem-percentage")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind mem-percentage flag")
-		os.Exit(1)
-	}
-	cmd.Flags().StringSliceVar(&flags.JvmOpts, "opts", []string{}, "Additional JVM flags to pass")
-	if err := viper.BindPFlag("opts", cmd.Flags().Lookup("opts")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind opts flag")
-		os.Exit(1)
-	}
-	cmd.Flags().StringVar(&flags.JavaBin, "java-bin", "auto-detect", "Path to the Java binary to use (default: auto-detect)")
-	if err := viper.BindPFlag("java-bin", cmd.Flags().Lookup("java-bin")); err != nil {
-		log.Error().Err(err).Msg("Failed to bind java-bin flag")
-		os.Exit(1)
-	}
+	_ = v.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run"))
 
+	cmd.Flags().BoolVar(&flags.NoColor, "no-color", false, "Disable color output")
+	_ = v.BindPFlag("no-color", cmd.Flags().Lookup("no-color"))
+
+	cmd.Flags().BoolVarP(&flags.Verbose, "verbose", "v", false, "Increase verbosity of output")
+	_ = v.BindPFlag("verbose", cmd.Flags().Lookup("verbose"))
+
+	cmd.Flags().BoolVarP(&flags.PrintVersion, "version", "V", false, "Display the application version and exit")
+	_ = v.BindPFlag("version", cmd.Flags().Lookup("version"))
+
+	cmd.Flags().StringVarP(&flags.LogFormat, "log-format", "l", "console", "Log format to use (plain, json or console)")
+	_ = v.BindPFlag("log-format", cmd.Flags().Lookup("log-format"))
+
+	cmd.Flags().IntVar(&flags.CPUCount, "cpu-count", 0, "Override detected CPU count")
+	_ = v.BindPFlag("cpu-count", cmd.Flags().Lookup("cpu-count"))
+
+	cmd.Flags().Float64Var(&flags.MemPercentage, "mem-percentage", 0.0, "Override detected memory percentage")
+	_ = v.BindPFlag("mem-percentage", cmd.Flags().Lookup("mem-percentage"))
+
+	cmd.Flags().StringVar(&flags.OptsRaw, "opts", "", "Additional JVM flags to pass (space-separated)")
+	_ = v.BindPFlag("opts", cmd.Flags().Lookup("opts"))
+
+	cmd.Flags().StringVar(&flags.JavaBin, "java-bin", "auto-detect", "Path to the Java binary to use (default: auto-detect)")
+	_ = v.BindPFlag("java-bin", cmd.Flags().Lookup("java-bin"))
+
+	v.AutomaticEnv()
 }
 
 func main() {
@@ -174,11 +150,11 @@ func main() {
 	}
 }
 
-func initLogger(verbose bool) {
+func initLogger(verbose bool, noColor bool) {
 	// Console writer
 	consoleWriter := zerolog.ConsoleWriter{
 		Out:     colorable.NewColorableStdout(),
-		NoColor: flags.NoColor,
+		NoColor: noColor,
 	}
 	// Disable timestamps
 	zerolog.TimeFieldFormat = ""
@@ -205,9 +181,6 @@ func getPrefix(fallback string) string {
 	prefix := os.Getenv("JAVA_TUNER_PREFIX")
 	if len(prefix) == 0 {
 		prefix = fallback
-	}
-	if prefix != "" && !strings.HasSuffix(prefix, "_") {
-		prefix += "_"
 	}
 	return prefix
 }

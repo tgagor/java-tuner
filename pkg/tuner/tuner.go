@@ -2,10 +2,10 @@ package tuner
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/rs/zerolog/log"
-
-	"github.com/tgagor/java-tuner/pkg/config"
+	"github.com/spf13/viper"
 )
 
 // Options holds calculated JVM options.
@@ -16,15 +16,15 @@ type Options struct {
 }
 
 // DetectResources reads env vars and returns CPU/mem info.
-func DetectResources(flags config.Flags) (cpuCount int, memLimit uint64, memPercentage float64, otherFlags []string, err error) {
-	cpuCount = flags.CPUCount
+func DetectResources(v *viper.Viper) (cpuCount int, memLimit uint64, memPercentage float64, otherFlags []string, err error) {
+	cpuCount = v.GetInt("cpu-count")
 	if cpuCount <= 0 {
 		log.Debug().Msg("CPU count not set, detecting")
 		cpuCount = CPULimit()
 	}
 	log.Debug().Int("cpuCount", cpuCount).Msg("Detected CPU count")
 
-	memPercentage = flags.MemPercentage
+	memPercentage = v.GetFloat64("mem-percentage")
 	if memPercentage <= 0 {
 		log.Debug().Msg("Memory percentage not set, using default 80.0")
 		memPercentage = 80.0
@@ -39,11 +39,12 @@ func DetectResources(flags config.Flags) (cpuCount int, memLimit uint64, memPerc
 		log.Debug().Uint64("memLimit", memLimit).Msg("Using 25% of system RAM as memory limit")
 	}
 
-	otherFlags = flags.JvmOpts
-	if len(otherFlags) == 0 {
-		log.Debug().Msg("No extra JVM options provided")
-	} else {
+	if len(v.GetString("opts")) != 0 {
+		// Parse opts from raw string if provided
+		otherFlags = strings.Fields(v.GetString("opts"))
 		log.Debug().Strs("otherFlags", otherFlags).Msg("Using extra JVM options")
+	} else {
+		log.Debug().Msg("No extra JVM options provided")
 	}
 
 	return
