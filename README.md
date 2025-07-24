@@ -1,10 +1,10 @@
-# java-tuner
+# Java Tuner for Containers
 
 A small, statically linked CLI tool that simplifies tuning of Java applications for containerized environments. It automatically detects available CPU and memory resources, then generates optimal JVM options to improve performance and reliability.
 
 ## What does it do?
 
-`java-tuner` inspects your container or host environment to determine CPU and memory limits, then outputs recommended JVM flags. These flags help Java applications run efficiently by:
+`java-tuner` inspects your container or host environment to determine CPU and memory limits, then sets recommended JVM flags. These flags help Java applications run efficiently by:
 
 - Setting memory usage based on available RAM and a configurable percentage.
 - Configuring JVM to use the correct number of CPUs.
@@ -31,18 +31,31 @@ java-tuner [flags] -- [java-class-or-jar] [java-args]
 
 All arguments after `--` are passed directly to the Java process, allowing you to specify the main class, JAR file, and any application arguments.
 
-You can set environment variables to override detection:
 
-- `JAVA_TUNER_CPU` — Force CPU count
-- `JAVA_TUNER_MEM_PERCENTAGE` — Set max RAM percentage (default: 80)
-- `JAVA_TUNER_OPTS` — Add extra JVM flags
+### Environment Variables
 
-## Flags
+You can set environment variables to override detection and behavior:
 
-- `--dry-run, -d` — Print actions but don't execute them
-- `--no-color` — Disable color output
-- `--verbose, -v` — Increase verbosity of output (shows debug info)
-- `--version, -V` — Display the application version and exit
+- `JAVA_TUNER_PREFIX`         Change env var prefix (default: JAVA_TUNER_)
+- `JAVA_TUNER_CPU_COUNT`      Override detected CPU count (same as --cpu-count)
+- `JAVA_TUNER_MEM_PERCENTAGE` Override detected memory percentage (same as --mem-percentage)
+- `JAVA_TUNER_OPTS`           Additional JVM flags (same as --opts)
+- `JAVA_TUNER_NO_COLOR`       Disable color output (same as --no-color)
+- `JAVA_TUNER_VERBOSE`        Increase verbosity (same as --verbose)
+- `JAVA_TUNER_LOG_FORMAT`     Log format to use (plain, json, console)
+- `JAVA_TUNER_JAVA_BIN`       Path to the Java binary to use (same as --java-bin)
+
+### Flags
+
+- `--dry-run, -d`         Print actions but don't execute them
+- `--no-color`            Disable color output
+- `--verbose, -v`         Increase verbosity of output (shows debug info)
+- `--version, -V`         Display the application version and exit
+- `--cpu-count`           Override detected CPU count
+- `--mem-percentage`      Override detected memory percentage
+- `--opts`                Additional JVM flags to pass
+- `--java-bin`            Path to the Java binary to use (default: auto-detect)
+- `--log-format, -l`      Log format to use (plain, json, console)
 
 ## Typical use cases
 
@@ -60,22 +73,6 @@ This will:
 - Detect resources and generate JVM flags
 - Start your Java application (`myapp.jar`) with those flags
 - Pass all arguments after `--` to the Java process
-
-## How it works
-
-- Reads cgroup files to detect CPU and memory limits.
-- Applies defaults and user overrides.
-- Runs the Java process directly, replacing itself and passing all signals and arguments.
-
-## License
-
-[GPLv3](./LICENSE)
-
-## How it works
-
-- Reads cgroup files to detect CPU and memory limits.
-- Applies defaults and user overrides.
-- Outputs JVM flags for use in your Java command.
 
 ## License
 
