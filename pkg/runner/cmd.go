@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
 
@@ -17,12 +18,24 @@ type Cmd struct {
 	preText string
 }
 
-func New(c string) *Cmd {
+func New() *Cmd {
 	return &Cmd{
-		cmd:     c,
 		verbose: false,
 		preText: "",
 	}
+}
+
+func (c *Cmd) FindJava() *Cmd {
+	path, err := exec.LookPath("java")
+	if err != nil {
+		log.Error().Err(err).Msg("Java executable not found")
+		os.Exit(1)
+	} else {
+		log.Info().Str("path", path).Msg("Java executable found")
+	}
+
+	c.cmd = path
+	return c
 }
 
 func (c *Cmd) Equal(cmd *Cmd) bool {
@@ -45,6 +58,7 @@ func (c *Cmd) PreInfo(msg string) *Cmd {
 }
 
 func (c *Cmd) Run() (string, error) {
+	c.FindJava()
 	// pipe the commands output to the applications
 	if c.cmd == "" {
 		return "", errors.New("command not set")

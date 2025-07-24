@@ -58,9 +58,23 @@ When 'docker build' is just not enough. :-)`,
 		jvmArgs := tuner.FormatOptions(opts)
 
 		log.Info().Strs("jvmArgs", jvmArgs).Msg("Will start Java with options:")
+		java := runner.New().Arg(jvmArgs...).SetVerbose(flags.Verbose)
+
+		// Find arguments after -- and append them to jvmArgs
+		extraArgs := []string{}
+		for i, arg := range os.Args {
+			if arg == "--" {
+				extraArgs = os.Args[i+1:]
+				break
+			}
+		}
+		if len(extraArgs) > 0 {
+			java.Arg(extraArgs...)
+			log.Debug().Strs("extraArgs", extraArgs).Msg("Appended extra arguments after --")
+		}
 
 		if !flags.DryRun {
-			output, err := runner.New("/usr/local/bin/java").Arg(jvmArgs...).SetVerbose(flags.Verbose).Run()
+			output, err := java.Run()
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to run Java command")
 				os.Exit(1)
@@ -68,7 +82,7 @@ When 'docker build' is just not enough. :-)`,
 			log.Info().Str("output", output).Msg("Java command executed successfully")
 		} else {
 			log.Info().Msg("Dry run enabled, not executing command.")
-			log.Debug().Str("cmd", "java").Strs("args", jvmArgs).Msg("Dry run command")
+			log.Debug().Str("cmd", java.String()).Msg("Dry run command")
 		}
 	},
 }
