@@ -47,7 +47,7 @@ Environment Variables:
 			initLogger(v.GetBool("verbose"), false)
 		case "plain":
 			initLogger(v.GetBool("verbose"), true)
-		default:
+		default: // json works out of the box
 		}
 
 		log.Debug().Any("settings", v.AllSettings()).Msg("Loaded configuration from environment variables")
@@ -107,7 +107,7 @@ func init() {
 		BuildVersion = "development" // Fallback if not set during build
 	}
 
-	v.SetEnvPrefix(getPrefix(JAVA_TUNER_DEFAULT_PREFIX))
+	v.SetEnvPrefix(getPrefix())
 	replacer := strings.NewReplacer("-", "_")
 	v.SetEnvKeyReplacer(replacer)
 	v.AutomaticEnv()
@@ -115,9 +115,6 @@ func init() {
 	// Use v to provide default values for flags if env vars are set
 	cmd.Flags().BoolVarP(&flags.DryRun, "dry-run", "d", false, "Print actions but don't execute them")
 	_ = v.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run"))
-
-	cmd.Flags().BoolVar(&flags.NoColor, "no-color", false, "Disable color output")
-	_ = v.BindPFlag("no-color", cmd.Flags().Lookup("no-color"))
 
 	cmd.Flags().BoolVarP(&flags.Verbose, "verbose", "v", false, "Increase verbosity of output")
 	_ = v.BindPFlag("verbose", cmd.Flags().Lookup("verbose"))
@@ -177,7 +174,8 @@ func initLogger(verbose bool, noColor bool) {
 	}
 }
 
-func getPrefix(fallback string) string {
+func getPrefix() string {
+	fallback := JAVA_TUNER_DEFAULT_PREFIX
 	prefix := os.Getenv("JAVA_TUNER_PREFIX")
 	if len(prefix) == 0 {
 		prefix = fallback
