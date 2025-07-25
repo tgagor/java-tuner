@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 )
 
 // Options holds calculated JVM options.
@@ -16,20 +15,20 @@ type Options struct {
 }
 
 // DetectResources reads env vars and returns CPU/mem info.
-func DetectResources(v *viper.Viper) (cpuCount int, memLimit uint64, memPercentage float64, otherFlags []string, err error) {
-	cpuCount = v.GetInt("cpu-count")
-	if cpuCount <= 0 {
+func DetectResources(cpuCount int, memPercentage float64, opts string) (finalCpuCount int, memLimit uint64, finalMemPercentage float64, finalOpts []string, err error) {
+	finalCpuCount = cpuCount
+	if finalCpuCount <= 0 {
 		log.Debug().Msg("CPU count not set, detecting")
-		cpuCount = CPULimit()
+		finalCpuCount = CPULimit()
 	}
-	log.Debug().Int("cpuCount", cpuCount).Msg("Detected CPU count")
+	log.Debug().Int("cpuCount", finalCpuCount).Msg("Detected CPU count")
 
-	memPercentage = v.GetFloat64("mem-percentage")
-	if memPercentage <= 0 {
+	finalMemPercentage = memPercentage
+	if finalMemPercentage <= 0 {
 		log.Debug().Msg("Memory percentage not set, using default 80.0")
-		memPercentage = 80.0
+		finalMemPercentage = 80.0
 	}
-	log.Debug().Float64("memPercentage", memPercentage).Msg("Using memory percentage")
+	log.Debug().Float64("memPercentage", finalMemPercentage).Msg("Using memory percentage")
 
 	memLimit = MemoryLimit()
 	log.Debug().Uint64("memLimit", memLimit).Msg("Detected memory limit")
@@ -39,10 +38,10 @@ func DetectResources(v *viper.Viper) (cpuCount int, memLimit uint64, memPercenta
 		log.Debug().Uint64("memLimit", memLimit).Msg("Using 25% of system RAM as memory limit")
 	}
 
-	if len(v.GetString("opts")) != 0 {
+	if len(opts) != 0 {
 		// Parse opts from raw string if provided
-		otherFlags = strings.Fields(v.GetString("opts"))
-		log.Debug().Strs("otherFlags", otherFlags).Msg("Using extra JVM options")
+		finalOpts = strings.Fields(opts)
+		log.Debug().Strs("otherFlags", finalOpts).Msg("Using extra JVM options")
 	} else {
 		log.Debug().Msg("No extra JVM options provided")
 	}

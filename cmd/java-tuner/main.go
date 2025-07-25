@@ -65,7 +65,10 @@ Environment Variables:
 		}
 
 		// Use tuner package to detect resources and print JVM options
-		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources(v)
+		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources(
+			v.GetInt("cpu-count"),
+			v.GetFloat64("mem-percentage"),
+			v.GetString("opts"))
 		if err != nil {
 			log.Error().Err(err).Msg("Failed to detect resources")
 			os.Exit(1)
