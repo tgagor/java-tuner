@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/tgagor/java-tuner/pkg/runner"
+	"golang.org/x/mod/semver"
 )
 
 // Options holds calculated JVM options.
@@ -15,7 +17,23 @@ type Options struct {
 }
 
 // DetectResources reads env vars and returns CPU/mem info.
-func DetectResources(cpuCount int, memPercentage float64, opts string) (finalCpuCount int, memLimit uint64, finalMemPercentage float64, finalOpts []string, err error) {
+func DetectResources(cpuCount int, memPercentage float64, opts string) (javaVersion string, finalCpuCount int, memLimit uint64, finalMemPercentage float64, finalOpts []string, err error) {
+	cmd := runner.New("java").Arg("-version")
+	versionOutput, err := cmd.Output()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to get Java version")
+		// TODO: handle error properly
+	}
+	log.Debug().Str("output", versionOutput).Err(err).Msg("Java version output")
+
+	javaVersion, err = JavaVersion(versionOutput)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to parse Java version")
+	}
+	log.Debug().Str("version", javaVersion).Err(err).Msg("Detected Java version")
+
+	defaults := GetDefaults(javaVersion)
+
 	finalCpuCount = cpuCount
 	if finalCpuCount <= 0 {
 		log.Debug().Msg("CPU count not set, detecting")
@@ -26,7 +44,7 @@ func DetectResources(cpuCount int, memPercentage float64, opts string) (finalCpu
 	finalMemPercentage = memPercentage
 	if finalMemPercentage <= 0 {
 		log.Debug().Msg("Memory percentage not set, using default 80.0")
-		finalMemPercentage = 80.0
+		finalMemPercentage = defaults.maxRamPercentage
 	}
 	log.Debug().Float64("memPercentage", finalMemPercentage).Msg("Using memory percentage")
 
@@ -39,8 +57,10 @@ func DetectResources(cpuCount int, memPercentage float64, opts string) (finalCpu
 	}
 
 	if len(opts) != 0 {
+		// add defaults to opts
+		finalOpts = append(finalOpts, defaults.opts...)
 		// Parse opts from raw string if provided
-		finalOpts = strings.Fields(opts)
+		finalOpts = append(finalOpts, strings.Fields(opts)...)
 		log.Debug().Strs("otherFlags", finalOpts).Msg("Using extra JVM options")
 	} else {
 		log.Debug().Msg("No extra JVM options provided")
@@ -50,29 +70,33 @@ func DetectResources(cpuCount int, memPercentage float64, opts string) (finalCpu
 }
 
 // Tune returns JVM options based on detected resources and user flags.
-func Tune(cpuCount int, memLimit uint64, memPercentage float64, otherFlags []string) Options {
+func Tune(javaVersion string, cpuCount int, memLimit uint64, memPercentage float64, otherFlags []string) Options {
 	log.Debug().Msg("Tuning JVM options")
 	opts := Options{}
 
-	// Collecting default JVM options
-	defaults := []string{
-		"-XX:+AlwaysActAsServerClassMachine",     // Always use server JVM
-		"-Dnetworkaddress.cache.ttl=10",          // DNS cache
-		"-Dnetworkaddress.cache.negative.ttl=10", // Negative DNS cache
-		"-XX:+UseStringDeduplication",            // Enable string deduplication
-		"-Xshare:off",                            // Disable class data sharing as it's just single JVM
-	}
+	defaults := GetDefaults(javaVersion)
+	opts.OtherOpts = append(opts.OtherOpts, defaults.opts...)
 
-	// Memory options
-	memDefaults := []string{
-		"-XX:InitialRAMPercentage=25.0",
-		"-XX:MinRAMPercentage=25.0",
+	if semver.Compare(defaults.maxVersion, "v10.0") < 0 { // older Java, calculate limits in MB
+		for _, flag := range defaults.maxRamFlags {
+			// we take the percentage of max memory limit and convert it to MB
+			opts.MemoryOpts = append(opts.MemoryOpts, fmt.Sprintf(flag, float64(memLimit)*memPercentage/100/1024/1024))
+			log.Info().Str("flag", flag).Msg("Using max RAM flag")
+		}
+		for _, flag := range defaults.initialRamFlags {
+			opts.MemoryOpts = append(opts.MemoryOpts, fmt.Sprintf(flag, float64(memLimit)*memPercentage/100/1024/1024))
+			log.Info().Str("flag", flag).Msg("Using initial RAM flag")
+		}
+	} else { // Java 10+, use percentage
+		for _, flag := range defaults.maxRamFlags {
+			opts.MemoryOpts = append(opts.MemoryOpts, fmt.Sprintf(flag, memPercentage))
+			log.Info().Str("flag", flag).Msg("Using max RAM percentage flag")
+		}
+		for _, flag := range defaults.initialRamFlags {
+			opts.MemoryOpts = append(opts.MemoryOpts, fmt.Sprintf(flag, defaults.initialRamPercentage))
+			log.Info().Str("flag", flag).Msg("Using initial RAM percentage flag")
+		}
 	}
-
-	opts.MemoryOpts = append(opts.MemoryOpts, memDefaults...)
-	log.Debug().Strs("memDefaults", memDefaults).Msg("Using default memory options")
-	opts.MemoryOpts = append(opts.MemoryOpts, fmt.Sprintf("-XX:MaxRAMPercentage=%.1f", memPercentage))
-	log.Info().Float64("memPercentage", memPercentage).Msg("Using memory percentage for MaxRAMPercentage")
 
 	if memLimit < 128*1024*1024 { // Less than 128MB
 		log.Warn().Uint64("memLimit", memLimit).Msg("Memory limit is less than 128MB, setting -XX:MaxRAM would not allow to start JVM, skipping it")
@@ -87,8 +111,6 @@ func Tune(cpuCount int, memLimit uint64, memPercentage float64, otherFlags []str
 	log.Debug().Int("cpuCount", cpuCount).Msg("Using CPU count for ActiveProcessorCount")
 
 	// Other options
-	opts.OtherOpts = append(opts.OtherOpts, defaults...)
-	log.Debug().Strs("defaults", defaults).Msg("Using default JVM options")
 	opts.OtherOpts = append(opts.OtherOpts, otherFlags...)
 	log.Debug().Strs("otherFlags", otherFlags).Msg("Using additional JVM options")
 	return opts

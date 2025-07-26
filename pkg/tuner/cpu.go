@@ -49,7 +49,7 @@ func CPULimit() int {
 	// Fallback: use system CPU count
 	cpus := runtime.NumCPU()
 	log.Warn().Int("cpus", cpus).Msg("Failed to detect CPU limit, using system CPU count")
-	return runtime.NumCPU()
+	return cpus
 }
 
 func readIntFromFile(path string) (int, error) {

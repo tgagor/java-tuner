@@ -65,7 +65,7 @@ Environment Variables:
 		}
 
 		// Use tuner package to detect resources and print JVM options
-		cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources(
+		javaVersion, cpuCount, memBytes, memPercentage, otherFlags, err := tuner.DetectResources(
 			v.GetInt("cpu-count"),
 			v.GetFloat64("mem-percentage"),
 			v.GetString("opts"))
@@ -74,7 +74,7 @@ Environment Variables:
 			os.Exit(1)
 		}
 
-		opts := tuner.Tune(cpuCount, memBytes, memPercentage, otherFlags)
+		opts := tuner.Tune(javaVersion, cpuCount, memBytes, memPercentage, otherFlags)
 		jvmArgs := tuner.FormatOptions(opts)
 		jvmArgs = tuner.FilterBlacklisted(jvmArgs)
 		java := runner.New().Arg(jvmArgs...).SetVerbose(flags.Verbose)
@@ -93,7 +93,7 @@ Environment Variables:
 		}
 
 		if !flags.DryRun {
-			_, err := java.FindJava(v.GetString("java-bin")).Run()
+			_, err := java.FindJava(v.GetString("java-bin")).Exec()
 			if err != nil {
 				log.Error().Err(err).Msg("Failed to run Java command")
 				os.Exit(1)
