@@ -129,6 +129,7 @@ jobs:
             ${{ steps.vars.outputs.GOBIN }}/gocyclo
             ${{ steps.vars.outputs.GOBIN }}/golangci-lint
             ${{ steps.vars.outputs.GOBIN }}/gocritic
+            ${{ steps.vars.outputs.GOBIN }}/govulncheck
           key: golint-v1-${{ github.job }}-${{ runner.os }}-${{ steps.vars.outputs.GOVERSION }}-${{ hashFiles('Makefile') }}
 
       - name: Install dependencies
@@ -145,6 +146,7 @@ jobs:
             ${{ steps.vars.outputs.GOBIN }}/gocyclo
             ${{ steps.vars.outputs.GOBIN }}/golangci-lint
             ${{ steps.vars.outputs.GOBIN }}/gocritic
+            ${{ steps.vars.outputs.GOBIN }}/govulncheck
           key: golint-v1-${{ github.job }}-${{ runner.os }}-${{ steps.vars.outputs.GOVERSION }}-${{ hashFiles('Makefile') }}
 
       - uses: pre-commit/action@v3.0.1
