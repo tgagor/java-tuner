@@ -111,7 +111,7 @@ jobs:
 
       - name: Restore cached linting tools
         id: cached-tools
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: |
             ${{ steps.vars.outputs.GOBIN }}/goimports
@@ -128,7 +128,7 @@ jobs:
 
       - name: Update cache of linting tools
         if: steps.cached-tools.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: |
             ${{ steps.vars.outputs.GOBIN }}/goimports
