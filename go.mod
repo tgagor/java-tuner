@@ -7,7 +7,7 @@ toolchain go1.25.4
 require (
 	github.com/mattn/go-colorable v0.1.14
 	github.com/rs/zerolog v1.34.0
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/mod v0.31.0
