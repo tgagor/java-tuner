@@ -1,8 +1,8 @@
 module github.com/tgagor/java-tuner
 
-go 1.25.0
+go 1.26
 
-toolchain go1.25.4
+toolchain go1.26.0
 
 require (
 	github.com/mattn/go-colorable v0.1.14

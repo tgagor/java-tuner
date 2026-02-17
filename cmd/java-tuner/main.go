@@ -158,7 +158,7 @@ func initLogger(verbose bool, noColor bool) {
 	}
 	// Disable timestamps
 	zerolog.TimeFieldFormat = ""
-	consoleWriter.FormatTimestamp = func(i interface{}) string {
+	consoleWriter.FormatTimestamp = func(i any) string {
 		return ""
 	}
 
