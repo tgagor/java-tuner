@@ -35,65 +35,65 @@ jobs:
         #   - os: windows
         #     arch: arm64 # Windows ARM64 is not supported by Go
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v6
+      - name: Checkout Code
+        uses: actions/checkout@v6
 
-    - name: Setup GoLang
-      uses: actions/setup-go@v6
-      with:
-        go-version: '1.26'
+      - name: Setup GoLang
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.26"
 
-    - name: Guess next version
-      id: guessed_tag_version
-      uses: mathieudutour/github-tag-action@v6.2
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        dry_run: true
-        append_to_pre_release_tag: pre
-    - name: Extract version from tag
-      env:
-        VERSION_TAG: ${{ steps.guessed_tag_version.outputs.new_tag }}
-      run: echo "VERSION=$(echo $VERSION_TAG | sed -e "s/^v//" -e "s/-.*$//")" >> $GITHUB_ENV
+      - name: Guess next version
+        id: guessed_tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          dry_run: true
+          append_to_pre_release_tag: pre
+      - name: Extract version from tag
+        env:
+          VERSION_TAG: ${{ steps.guessed_tag_version.outputs.new_tag }}
+        run: echo "VERSION=$(echo $VERSION_TAG | sed -e "s/^v//" -e "s/-.*$//")" >> $GITHUB_ENV
 
-    - name: Build
-      id: build
-      env:
-        GOOS: ${{ matrix.os }}
-        GOARCH: ${{ matrix.arch }}
-      run: |
-        set -x
-        go version
+      - name: Build
+        id: build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: |
+          set -x
+          go version
 
-        export CGO_ENABLED=0
+          export CGO_ENABLED=0
 
-        OUTPUT_NAME=java-tuner-${{ matrix.os }}-${{ matrix.arch }}
-        if [ "${{ matrix.os }}" == "windows" ]; then
-          OUTPUT_NAME+=".exe"
-        fi
-        if [ "${{ matrix.os }}" == "darwin" ]; then
-          OUTPUT_NAME=java-tuner-macos-${{ matrix.arch }}
-        fi
-        go build \
-          -ldflags="-X main.BuildVersion=${VERSION}" \
-          -o bin/$OUTPUT_NAME \
-          ./cmd/java-tuner
+          OUTPUT_NAME=java-tuner-${{ matrix.os }}-${{ matrix.arch }}
+          if [ "${{ matrix.os }}" == "windows" ]; then
+            OUTPUT_NAME+=".exe"
+          fi
+          if [ "${{ matrix.os }}" == "darwin" ]; then
+            OUTPUT_NAME=java-tuner-macos-${{ matrix.arch }}
+          fi
+          go build \
+            -ldflags="-X main.BuildVersion=${VERSION}" \
+            -o bin/$OUTPUT_NAME \
+            ./cmd/java-tuner
 
-        echo "binary=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
+          echo "binary=${OUTPUT_NAME}" >> "$GITHUB_OUTPUT"
 
-    - name: Run UPX
-      uses: crazy-max/ghaction-upx@v4
-      # macos is not supported
-      if: ${{ matrix.os != 'darwin' }}
-      with:
-        version: latest
-        files: |
-          ./bin/*
-        args: -fq --best --ultra-brute
+      - name: Run UPX
+        uses: crazy-max/ghaction-upx@v4
+        # macos is not supported
+        if: ${{ matrix.os != 'darwin' }}
+        with:
+          version: latest
+          files: |
+            ./bin/*
+          args: -fq --best --ultra-brute
 
-    - uses: actions/upload-artifact@v7
-      with:
-        name: ${{ steps.build.outputs.binary }}
-        path: bin/*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.build.outputs.binary }}
+          path: bin/*
 
   pre-commit:
     name: pre-commit checks
@@ -106,7 +106,7 @@ jobs:
       - name: Setup GoLang
         uses: actions/setup-go@v6
         with:
-          go-version: '1.26'
+          go-version: "1.26"
 
       - id: vars
         run: |
@@ -142,7 +142,7 @@ jobs:
             ${{ steps.vars.outputs.GOBIN }}/govulncheck
           key: golint-v1-${{ github.job }}-${{ runner.os }}-${{ steps.vars.outputs.GOVERSION }}-${{ hashFiles('Makefile') }}
 
-      - uses: pre-commit/action@v3.0.1
+      - uses: j178/prek-action@v2.0.1
 
   unit-tests:
     name: unit tests
@@ -155,7 +155,7 @@ jobs:
       - name: Setup GoLang
         uses: actions/setup-go@v6
         with:
-          go-version: '1.26'
+          go-version: "1.26"
 
       - name: Run Unit Tests
         run: |
